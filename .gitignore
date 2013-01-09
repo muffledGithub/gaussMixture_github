@@ -1,0 +1,5 @@
+Debug/
+Release/
+*.txt
+*.ncb
+*.suo

@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gaussMixture", "gaussMixture\gaussMixture.vcproj", "{88E7BA53-9B8C-4EEB-95F0-F1E36D43D509}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{88E7BA53-9B8C-4EEB-95F0-F1E36D43D509}.Debug|Win32.ActiveCfg = Debug|Win32
+		{88E7BA53-9B8C-4EEB-95F0-F1E36D43D509}.Debug|Win32.Build.0 = Debug|Win32
+		{88E7BA53-9B8C-4EEB-95F0-F1E36D43D509}.Release|Win32.ActiveCfg = Release|Win32
+		{88E7BA53-9B8C-4EEB-95F0-F1E36D43D509}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
