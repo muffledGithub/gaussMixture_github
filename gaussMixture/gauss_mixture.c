@@ -5,7 +5,7 @@
 
 static gaussmix_model_param_t g_model_param;
 
-void _set_model_param(int img_width, int img_height)
+static void _set_model_param(int img_width, int img_height)
 {
         memset(&g_model_param, 0, sizeof(gaussmix_model_param_t));
 
@@ -34,6 +34,160 @@ void _set_model_param(int img_width, int img_height)
         g_model_param.gmp_bshadow_detection = 1;
         g_model_param.gmp_ucshadow_value = GAUSSMIX_SHADOW_VALUE;
         g_model_param.gmp_ftau = GAUSSMIX_SHADOW_TAU;
+}
+
+static __inline float _maha_distance(float r, float g, float b,
+                                     float *mean)
+{
+        float maha_dis = 0.f;
+
+        maha_dis += ( (mean[0] - r) * (mean[0] - r) );
+        maha_dis += ( (mean[1] - g) * (mean[1] - g) );
+        maha_dis += ( (mean[2] - b) * (mean[2] - b) );
+
+        return maha_dis;
+}
+
+static __inline void _gaussian_update(gaussmix_single_gaussian_t *pgauss,
+                                      float r, float g, float b,
+                                      float maha_dis, 
+                                      float weight)
+{
+        weight += g_model_param.gmp_falpha;
+        pgauss->gsg_fmean[0] += g_model_param.gmp_falpha /
+                weight * (r - pgauss->gsg_fmean[0]);
+        pgauss->gsg_fmean[1] += g_model_param.gmp_falpha /
+                weight * (g - pgauss->gsg_fmean[1]);
+        pgauss->gsg_fmean[2] += g_model_param.gmp_falpha /
+                weight * (b - pgauss->gsg_fmean[2]);
+        pgauss->gsg_fvariance += g_model_param.gmp_falpha / 
+                weight * (maha_dis - pgauss->gsg_fvariance);
+        if (pgauss->gsg_fvariance < g_model_param.gmp_fvar_min) {
+                pgauss->gsg_fvariance = 
+                        g_model_param.gmp_fvar_min;
+        }
+        if (pgauss->gsg_fvariance > g_model_param.gmp_fvar_max) {
+                pgauss->gsg_fvariance = 
+                        g_model_param.gmp_fvar_max;
+        }
+        pgauss->gsg_fweight = weight;
+}
+
+static __inline _gaussian_sort(gaussmix_single_gaussian_t* pgauss,
+                               int index)
+{
+        gaussmix_single_gaussian_t swap_temp;
+        
+        for (; index > 0; index--)
+        {
+                if (pgauss[index].gsg_fweight < pgauss[index - 1].gsg_fweight)
+                        break;
+                else {
+                        swap_temp = pgauss[index];
+                        pgauss[index] = pgauss[index - 1];
+                        pgauss[index - 1] = swap_temp;
+                }
+        }
+}
+
+static __inline _generate_new_gaussian(gaussmix_single_gaussian_t* pgauss, 
+                                       unsigned char *pngaussians_used, 
+                                       float r, float g, float b)
+{
+        int postion = 0;
+
+        /* maximum positions have been used */
+        if (*pngaussians_used == g_model_param.gmp_inmodels) {
+                postion = (*pngaussians_used) - 1;
+        }
+        else {
+                postion = (*pngaussians_used);
+                (*pngaussians_used)++;
+        }
+
+        pgauss[postion].gsg_fweight = g_model_param.gmp_falpha;
+        pgauss[postion].gsg_fmean[0] = r;
+        pgauss[postion].gsg_fmean[1] = g;
+        pgauss[postion].gsg_fmean[2] = b;
+        pgauss[postion].gsg_fvariance = g_model_param.gmp_fvar_init;
+
+        /* give the new gaussian correct position */
+        _gaussian_sort(pgauss, postion);
+}
+
+/* calculate distances to the modes (+ sort)
+   here we need to go in descending order!!! */
+static unsigned char _update(float r, float g, float b, 
+                             gaussmix_single_gaussian_t *psg, 
+                             unsigned char *pngaussians_used)
+{
+        /* return value, 1 => the pixel is classified as background */
+        unsigned char bbackground = 0; 
+
+        /* internal: */
+        /* if remains 0, a new GMM model will be added */
+        unsigned char bfits = 0; 
+        float ftotal_weight = 0.f; /* used for background portion decision */
+        float fsingle_weight = 0.f;
+        float maha_dis = 0.f; /* Mahalanobis distance */
+
+        int imodes = 0;
+        for (; imodes < (*pngaussians_used); imodes++, psg++) {
+                ftotal_weight += psg->gsg_fweight;
+                fsingle_weight = psg->gsg_fweight;
+                fsingle_weight = (1 - g_model_param.gmp_falpha) * fsingle_weight
+                        - g_model_param.gmp_falpha * g_model_param.gmp_fct;
+
+                /* fit not found yet */
+                if (!bfits) {
+                        maha_dis = _maha_distance(r, g, b, psg->gsg_fmean);
+
+                        /* background checking */
+                        if ((ftotal_weight < g_model_param.gmp_fone_minus_cf) && 
+                             (maha_dis < g_model_param.gmp_fcthr * 
+                             psg->gsg_fvariance)) {
+                                        bbackground = 1;
+                        }
+
+                        /* check if fits the current gaussian */
+                        if (maha_dis < g_model_param.gmp_fthres_smd * 
+                                psg->gsg_fvariance) {
+
+                                bfits = 1; /* belongs to the current gaussian */
+
+                                /* update the current gaussian distribution */
+                                _gaussian_update(psg, r, g, b, 
+                                                 maha_dis, fsingle_weight);
+
+                                /* sort
+                                   all other weights are at the same place and 
+                                   only the matched (imodes) is higher -> 
+                                   just find the new place for it */
+                                _gaussian_sort(psg, imodes);
+                        }
+                        else {
+                                if (fsingle_weight < -g_model_param.gmp_falpha * 
+                                        g_model_param.gmp_fct) {
+                                        fsingle_weight = 0.f;
+                                        (*pngaussians_used)--;
+                                }
+                                psg->gsg_fweight = fsingle_weight;
+                        }
+                }
+        }
+
+        if (!bfits) {
+                _generate_new_gaussian(psg, pngaussians_used, r, g, b);
+        }
+
+        // renormalize the weights
+        ftotal_weight = 0.f;
+        for (imodes = 0; imodes < (*pngaussians_used); ++imodes)
+                ftotal_weight += psg[imodes].gsg_fweight;
+        for (imodes = 0; imodes < (*pngaussians_used); ++imodes)
+                psg[imodes].gsg_fweight /= ftotal_weight;
+
+        return bbackground;                
 }
 
 gaussmix_image_t* gauss_mixture_create_image(int width, int height)
