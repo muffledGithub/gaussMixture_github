@@ -249,6 +249,20 @@ __failed:
         return -1;
 }
 
+void gauss_mixture_final(float **bg_model, 
+                         unsigned char **bg_model_used)
+{
+        if (*bg_model) {
+                free(*bg_model);
+                *bg_model = NULL;
+        }
+
+        if (*bg_model_used) {
+                free(*bg_model_used);
+                *bg_model_used = NULL;
+        }
+}
+
 void gauss_mixture_update(gaussmix_image_t *image, 
                           gaussmix_image_t *fg_mask, 
                           float *bg_model, 

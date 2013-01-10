@@ -65,6 +65,9 @@ int gauss_mixture_initialize(int img_width, int img_height,
                              float **bg_model,
                              unsigned char **bg_model_used);
 
+void gauss_mixture_final(float **bg_model, 
+                         unsigned char **bg_model_used);
+
 /**
  * gauss_mixture_update ------- update the Gaussian background model based on 
  *                              the input image, and output the foreground mask.
