@@ -221,10 +221,10 @@ void gauss_mixture_release_image(gaussmix_image_t **image)
 }
 
 int gauss_mixture_initialize(int img_width, int img_height, 
-                             int nmax_gaussians,
                              float **bg_model,
                              unsigned char **bg_model_used)
 {
+        int nmax_gaussians = g_model_param.gmp_inmodels;
         if ( !(*bg_model) || !(*bg_model_used) ) goto __failed;
 
         /* the form 2 + GAUSSMIX_DEFAULT_CHANNELS refers to the struct
@@ -247,4 +247,33 @@ __failed:
         *bg_model = NULL;
         *bg_model_used = NULL;
         return -1;
+}
+
+void gauss_mixture_update(gaussmix_image_t *image, 
+                          gaussmix_image_t *fg_mask, 
+                          float *bg_model, 
+                          unsigned char *bg_model_used)
+{
+        int width = image->gi_iwidth;
+        int height = image->gi_iheight;
+        unsigned char *img_data = image->gi_ucdata;
+        unsigned char *mask_data = fg_mask->gi_ucdata;
+        gaussmix_single_gaussian_t *psg = (gaussmix_single_gaussian_t*)bg_model;
+        int i = 0;
+        unsigned char bbackground = 0;
+
+        memset(fg_mask->gi_ucdata, 0, sizeof(unsigned char) * width * height);
+        while (i < width * height) {
+                bbackground = _update( (float)img_data[0], 
+                                       (float)img_data[1], 
+                                       (float)img_data[2], 
+                                       psg, 
+                                       bg_model_used );
+                if (bbackground) *mask_data = 255;
+
+                img_data += 3; /* RGB 3 channels */
+                mask_data++;
+                psg += g_model_param.gmp_inmodels;
+                bg_model_used++;
+        }
 }

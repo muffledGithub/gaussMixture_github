@@ -49,7 +49,6 @@ void gauss_mixture_release_image(gaussmix_image_t **image);
  * Parameters:
  * @img_width -------- the processed image width
  * @img_height ------- the processed image height
- * @nmax_gaussians --- the maximum gaussian models per pixel
  * @bg_model --------- double pointer to the background model
  * @bg_model_used ---- double pointer to the array which indicates the number 
  *                     of modes used by each pixel
@@ -63,9 +62,24 @@ void gauss_mixture_release_image(gaussmix_image_t **image);
  * If initialization failed, *bg_model and *bg_model_used will be set to NULL.
  */
 int gauss_mixture_initialize(int img_width, int img_height, 
-                             int nmax_gaussians,
                              float **bg_model,
                              unsigned char **bg_model_used);
+
+/**
+ * gauss_mixture_update ------- update the Gaussian background model based on 
+ *                              the input image, and output the foreground mask.
+ *
+ * Parameters:
+ * @image ----------- the input 8-bit RGB image
+ * @fg_mask --------- the output 8-bit binary image, foreground mask
+ * @bg_model -------- point to the background model
+ * @bg_model_used --- pointer to the array which indicates the number 
+ *                    of modes used by each pixel
+ */
+void gauss_mixture_update(gaussmix_image_t *image, 
+                          gaussmix_image_t *fg_mask, 
+                          float *bg_model, 
+                          unsigned char *bg_model_used);
 
 #ifdef __cplusplus
 }
