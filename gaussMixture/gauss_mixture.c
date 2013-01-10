@@ -1,6 +1,40 @@
 #include "gauss_mixture.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <memory.h>
+
+static gaussmix_model_param_t g_model_param;
+
+void _set_model_param(int img_width, int img_height)
+{
+        memset(&g_model_param, 0, sizeof(gaussmix_model_param_t));
+
+        g_model_param.gmp_iwidth = img_width;
+        g_model_param.gmp_iheight = img_height;
+        g_model_param.gmp_ichannels = GAUSSMIX_DEFAULT_CHANNELS;
+
+        g_model_param.gmp_bpost_filtering = 1;
+        g_model_param.gmp_dmin_area = GAUSSMIX_MINAREA;
+        g_model_param.gmp_binit = 1;
+
+        g_model_param.gmp_falpha = 1.0f / GAUSSMIX_WINDOW_SIZE;
+        g_model_param.gmp_fcthr = GAUSSMIX_STD_THRESHOLD * 
+                GAUSSMIX_STD_THRESHOLD;
+        g_model_param.gmp_fthres_smd = GAUSSMIX_STD_THRESHOLD_GENERATE * 
+                GAUSSMIX_STD_THRESHOLD_GENERATE;
+        g_model_param.gmp_fone_minus_cf = GAUSSMIX_BACKGROUND_THRESHOLD;
+
+        g_model_param.gmp_fvar_init = GAUSSMIX_VAR_INIT;
+        g_model_param.gmp_fvar_max = GAUSSMIX_VAR_MAX;
+        g_model_param.gmp_fvar_min = GAUSSMIX_VAR_MIN;
+
+        g_model_param.gmp_fct = GAUSSMIX_CT;
+        g_model_param.gmp_inmodels = GAUSSMIX_NGAUSSIANS;
+
+        g_model_param.gmp_bshadow_detection = 1;
+        g_model_param.gmp_ucshadow_value = GAUSSMIX_SHADOW_VALUE;
+        g_model_param.gmp_ftau = GAUSSMIX_SHADOW_TAU;
+}
 
 gaussmix_image_t* gauss_mixture_create_image(int width, int height)
 {
@@ -48,6 +82,8 @@ int gauss_mixture_initialize(int img_width, int img_height,
         *bg_model_used = (unsigned char *)calloc(img_width * img_height, 
                 sizeof(unsigned char));
         if ( !(*bg_model_used) ) goto __failed;
+
+        _set_model_param(img_width, img_height);
 
         return 1;
 

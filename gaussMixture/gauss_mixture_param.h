@@ -33,10 +33,10 @@ extern "C" {
 #define GAUSSMIX_STD_THRESHOLD_GENERATE   3.0f  
 
 /* = K = number of Gaussians in mixture */
-#define GAUSSMIX_NGAUSSIANS               5  
+#define GAUSSMIX_NGAUSSIANS               4 
 
 /* initial variance for new components*/
-#define GAUSSMIX_VAR_INIT                 15.0f   
+#define GAUSSMIX_VAR_INIT                 10.0f   
 
 #define GAUSSMIX_VAR_MIN                  4.0f
 
@@ -59,19 +59,19 @@ extern "C" {
 /* Tau - shadow threshold, see the paper for explanation*/
 #define GAUSSMIX_SHADOW_TAU               0.5f   
 
-typedef struct gaussmix_state_model_s
+typedef struct gaussmix_model_param_s
 {
         /* image info */
-        int gsm_iwidth;
-        int gsm_iheight;
-        int gsm_ichannels;
+        int gmp_iwidth;
+        int gmp_iheight;
+        int gmp_ichannels;
 
         /* defult 1 - do postfiltering 
            which will make shadow detection results also give value 255 */
-        unsigned char gsm_bpost_filtering;
-        double gsm_dmin_area;  /* for postfiltering */
+        unsigned char gmp_bpost_filtering;
+        double gmp_dmin_area;  /* for postfiltering */
 
-        unsigned char gsm_binit; /* default 1, faster updates at start */
+        unsigned char gmp_binit; /* default 1, faster updates at start */
 
         /* very important parameters - things you will change */
 
@@ -79,14 +79,14 @@ typedef struct gaussmix_state_model_s
            If the time interval you want to average over is T set alpha = 1/T. 
            It is also usefull at start to make T slowly increase from 1 until 
            the desired T. */
-        float gsm_falpha;
+        float gmp_falpha;
 
         /* cthr - threshold on the squared Mahalan. dist. to decide 
                   if it is well described by the background model or not. 
                   Related to Cthr from the paper.
            This does not influence the update of the background. 
            A typical value could be 4 sigma and that is cthr = 4 * 4 = 16 */
-        float gsm_fcthr;
+        float gmp_fcthr;
 
         /* less important parameters 
            - things you might change but be carefull */
@@ -99,7 +99,7 @@ typedef struct gaussmix_state_model_s
            Smaller thres_smd leads to more generated components and 
            higher thres_smd might lead to small number of components 
            but they can grow too large. */
-        float gsm_fthres_smd;
+        float gmp_fthres_smd;
 
         /* 1 - cf from the paper
            one_minus_cf - threshold when the component becomes significant 
@@ -107,7 +107,7 @@ typedef struct gaussmix_state_model_s
             So I use cf = 0.1 => one_minus_cf = 0.9
             For alpha = 0.001 it means that the mode should exist for 
             approximately 105 frames before it is considered foreground */
-        float gsm_fone_minus_cf;
+        float gmp_fone_minus_cf;
 
         /* Initial standard deviation for the newly generated components.
            It will influence the speed of adaptation, and a good guess should 
@@ -115,31 +115,31 @@ typedef struct gaussmix_state_model_s
            A simple way is to estimate the typical standard deviation from 
               the images.
            I used here 10 as a reasonable value. */
-        float gsm_fvar_init;
+        float gmp_fvar_init;
 
         /* the variance of every Gaussian model should be limited in
            [var_min, var_max] */
-        float gsm_fvar_max, gsm_fvar_min;
+        float gmp_fvar_max, gmp_fvar_min;
 
         /* ct - complexity reduction prior
            This is related to the number of samples needed to accept that a 
            component actually exists.We use ct = 0.05 of all the samples. 
            By setting ct = 0 you getthe standard Stauffer&Grimson algorithm 
            (maybe not exact but very similar). */
-        float gsm_fct;
+        float gmp_fct;
 
         /* even less important parameters */
 
         /* max number of modes - const - 4 is usually enough */
-        int gsm_inmodels;
+        int gmp_inmodels;
 
         /* shadow detection parameters */
 
         /* default 1 - do shadow detection */
-        unsigned char gsm_bshadow_detection;
+        unsigned char gmp_bshadow_detection;
 
         /* do shadow detection - insert this value as the detection result */
-        unsigned char gsm_ucshadow_value;
+        unsigned char gmp_ucshadow_value;
 
         /* tau - shadow threshold. 
            The shadow is detected if the pixel is darker version of the 
@@ -149,8 +149,8 @@ typedef struct gaussmix_state_model_s
            not shadow.
            See: Prati,Mikic, Trivedi, Cucchiarra, "Detecting Moving Shadows...",
            IEEE PAMI, 2003. */
-        float gsm_ftau;     
-} gaussmix_state_model_t;
+        float gmp_ftau;     
+} gaussmix_model_param_t;
 
 #ifdef __cplusplus
 }
