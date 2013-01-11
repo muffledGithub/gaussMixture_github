@@ -37,6 +37,7 @@ int main()
 }
 */
 
+
 int main()
 {
         float *bg_model = NULL;
@@ -59,7 +60,8 @@ int main()
 
                 memcpy(gauss_img->gi_ucdata, frame.data, sizeof(unsigned char) 
                         * width * height * frame.channels());
-                gauss_mixture_update(gauss_img, gauss_mask, bg_model, bg_model_used);
+                gauss_mixture_update(gauss_img, gauss_mask, bg_model, 
+                                     bg_model_used);
 
                 cv::imshow("show", frame);
                 if (cv::waitKey(30) == 27) break;
@@ -71,3 +73,26 @@ int main()
 
         return 0;
 }
+
+
+/*
+int main()
+{
+        cv::VideoCapture video("./test_resource/spring2.avi");
+        cv::Mat frame;
+
+        cv::BackgroundSubtractorMOG2 bg_model;
+        while (true) {
+                video >> frame;
+                if (!frame.data) break;
+
+                cv::Mat mask;
+                bg_model(frame, mask);
+
+                cv::imshow("show", frame);
+                if (cv::waitKey(1) == 27) break;
+        }
+
+        return 0;
+}
+*/

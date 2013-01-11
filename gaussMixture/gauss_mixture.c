@@ -124,8 +124,6 @@ static unsigned char _update(float r, float g, float b,
                              gaussmix_single_gaussian_t *psg, 
                              unsigned char *pngaussians_used)
 {
-        
-
         /* return value, 1 => the pixel is classified as background */
         unsigned char bbackground = 0; 
 
@@ -294,6 +292,7 @@ void gauss_mixture_update(gaussmix_image_t *image,
                 falpha = g_model_param.gmp_falpha;
         }
 
+        printf("nfram is: %d.\n", nframe);
         memset(fg_mask->gi_ucdata, 0, sizeof(unsigned char) * width * height);
         while (i++ < width * height) {
                 bbackground = _update( (float)img_data[0], 
