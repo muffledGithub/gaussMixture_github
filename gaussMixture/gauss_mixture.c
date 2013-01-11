@@ -120,10 +120,11 @@ static __inline _generate_new_gaussian(gaussmix_single_gaussian_t* pgauss,
 /* calculate distances to the modes (+ sort)
    here we need to go in descending order!!! */
 static unsigned char _update(float r, float g, float b, 
+                             float falpha, 
                              gaussmix_single_gaussian_t *psg, 
                              unsigned char *pngaussians_used)
 {
-        static long long nframe = 1; /* how many frames have been processed */
+        
 
         /* return value, 1 => the pixel is classified as background */
         unsigned char bbackground = 0; 
@@ -134,15 +135,7 @@ static unsigned char _update(float r, float g, float b,
         float ftotal_weight = 0.f; /* used for background portion decision */
         float fsingle_weight = 0.f;
         float maha_dis = 0.f; /* Mahalanobis distance */
-        float falpha = 0.f;
         int imodes = 0;
-
-        if (nframe++ < GAUSSMIX_WINDOW_SIZE / 2) {
-                falpha = 1.0f / (2 * nframe);
-        }
-        else {
-                falpha = g_model_param.gmp_falpha;
-        }
         for (; imodes < (*pngaussians_used); imodes++, psg++) {
                 fsingle_weight = psg->gsg_fweight;
                 fsingle_weight = (1 - falpha) * fsingle_weight
@@ -282,6 +275,8 @@ void gauss_mixture_update(gaussmix_image_t *image,
                           float *bg_model, 
                           unsigned char *bg_model_used)
 {
+        static long long nframe = 1; /* how many frames have been processed */
+
         int width = image->gi_iwidth;
         int height = image->gi_iheight;
         unsigned char *img_data = image->gi_ucdata;
@@ -289,12 +284,22 @@ void gauss_mixture_update(gaussmix_image_t *image,
         gaussmix_single_gaussian_t *psg = (gaussmix_single_gaussian_t*)bg_model;
         int i = 0;
         unsigned char bbackground = 0;
+        float falpha = 0.f;
+
+        /* at the start, use faster learning speed */
+        if (nframe++ < GAUSSMIX_WINDOW_SIZE / 2) {
+                falpha = 1.0f / (2 * nframe);
+        }
+        else {
+                falpha = g_model_param.gmp_falpha;
+        }
 
         memset(fg_mask->gi_ucdata, 0, sizeof(unsigned char) * width * height);
         while (i++ < width * height) {
                 bbackground = _update( (float)img_data[0], 
                                        (float)img_data[1], 
-                                       (float)img_data[2], 
+                                       (float)img_data[2],
+                                       falpha,
                                        psg, 
                                        bg_model_used );
                 if (bbackground) *mask_data = 255;
