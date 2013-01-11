@@ -133,7 +133,6 @@ static unsigned char _update(float r, float g, float b,
 
         int imodes = 0;
         for (; imodes < (*pngaussians_used); imodes++, psg++) {
-                ftotal_weight += psg->gsg_fweight;
                 fsingle_weight = psg->gsg_fweight;
                 fsingle_weight = (1 - g_model_param.gmp_falpha) * fsingle_weight
                         - g_model_param.gmp_falpha * g_model_param.gmp_fct;
@@ -174,6 +173,7 @@ static unsigned char _update(float r, float g, float b,
                                 psg->gsg_fweight = fsingle_weight;
                         }
                 }
+                ftotal_weight += psg->gsg_fweight;
         }
 
         if (!bfits) {
@@ -279,7 +279,7 @@ void gauss_mixture_update(gaussmix_image_t *image,
         unsigned char bbackground = 0;
 
         memset(fg_mask->gi_ucdata, 0, sizeof(unsigned char) * width * height);
-        while (i < width * height) {
+        while (i++ < width * height) {
                 bbackground = _update( (float)img_data[0], 
                                        (float)img_data[1], 
                                        (float)img_data[2], 

@@ -15,11 +15,20 @@ int main()
 
         cv::Mat cv_img = cv::imread("./test_resource/001.jpg");
         gaussmix_image_t *gauss_img = 
-                gauss_mixture_create_image(width, height,3);
+                gauss_mixture_create_image(width, height, 3);
         memcpy(gauss_img->gi_ucdata, cv_img.data, sizeof(unsigned char) * 
                 width * height * cv_img.channels());
+        gaussmix_image_t *mask = 
+                gauss_mixture_create_image(width, height, 1);
 
+        gauss_mixture_update(gauss_img, mask, bg_model, bg_model_used);
+
+        cv::Mat cv_img2 = cv::imread("./test_resource/002.jpg");
+        memcpy(gauss_img->gi_ucdata, cv_img.data, sizeof(unsigned char) * 
+                width * height * cv_img.channels());
+        gauss_mixture_update(gauss_img, mask, bg_model, bg_model_used);
         
+
         gauss_mixture_release_image(&gauss_img);
         gauss_mixture_final(&bg_model, &bg_model_used);
         
