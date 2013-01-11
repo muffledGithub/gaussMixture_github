@@ -39,7 +39,8 @@ typedef struct gaussmix_image_s
 } gaussmix_image_t;
 
 
-gaussmix_image_t* gauss_mixture_create_image(int width, int height);
+gaussmix_image_t* gauss_mixture_create_image(int width, int height, 
+                                             int channels);
 
 void gauss_mixture_release_image(gaussmix_image_t **image);
 

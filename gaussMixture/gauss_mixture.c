@@ -190,14 +190,15 @@ static unsigned char _update(float r, float g, float b,
         return bbackground;                
 }
 
-gaussmix_image_t* gauss_mixture_create_image(int width, int height)
+gaussmix_image_t* gauss_mixture_create_image(int width, int height, 
+                                             int channels)
 {
         gaussmix_image_t *image = (gaussmix_image_t*)malloc(
                 sizeof(gaussmix_image_t));
         if (!image) return NULL;
 
         image->gi_ucdata = (unsigned char*)calloc(width * height, 
-                sizeof(unsigned char));
+                sizeof(unsigned char) * channels);
         if (!image->gi_ucdata) {
                 free(image);
                 return NULL;
@@ -224,8 +225,11 @@ int gauss_mixture_initialize(int img_width, int img_height,
                              float **bg_model,
                              unsigned char **bg_model_used)
 {
-        int nmax_gaussians = g_model_param.gmp_inmodels;
-        if ( !(*bg_model) || !(*bg_model_used) ) goto __failed;
+        int nmax_gaussians;
+
+        _set_model_param(img_width, img_height);
+
+        nmax_gaussians = g_model_param.gmp_inmodels;
 
         /* the form 2 + GAUSSMIX_DEFAULT_CHANNELS refers to the struct
            gaussmix_single_gaussian_t */
@@ -236,8 +240,6 @@ int gauss_mixture_initialize(int img_width, int img_height,
         *bg_model_used = (unsigned char *)calloc(img_width * img_height, 
                 sizeof(unsigned char));
         if ( !(*bg_model_used) ) goto __failed;
-
-        _set_model_param(img_width, img_height);
 
         return 1;
 
