@@ -51,16 +51,17 @@ static __inline float _maha_distance(float r, float g, float b,
 static __inline void _gaussian_update(gaussmix_single_gaussian_t *pgauss,
                                       float r, float g, float b,
                                       float maha_dis, 
-                                      float weight)
+                                      float weight, 
+                                      float alpha)
 {
-        weight += g_model_param.gmp_falpha;
-        pgauss->gsg_fmean[0] += g_model_param.gmp_falpha /
+        weight += alpha;
+        pgauss->gsg_fmean[0] += alpha /
                 weight * (r - pgauss->gsg_fmean[0]);
-        pgauss->gsg_fmean[1] += g_model_param.gmp_falpha /
+        pgauss->gsg_fmean[1] += alpha /
                 weight * (g - pgauss->gsg_fmean[1]);
-        pgauss->gsg_fmean[2] += g_model_param.gmp_falpha /
+        pgauss->gsg_fmean[2] += alpha /
                 weight * (b - pgauss->gsg_fmean[2]);
-        pgauss->gsg_fvariance += g_model_param.gmp_falpha / 
+        pgauss->gsg_fvariance += alpha / 
                 weight * (maha_dis - pgauss->gsg_fvariance);
         if (pgauss->gsg_fvariance < g_model_param.gmp_fvar_min) {
                 pgauss->gsg_fvariance = 
@@ -92,7 +93,8 @@ static __inline _gaussian_sort(gaussmix_single_gaussian_t* pgauss,
 
 static __inline _generate_new_gaussian(gaussmix_single_gaussian_t* pgauss, 
                                        unsigned char *pngaussians_used, 
-                                       float r, float g, float b)
+                                       float r, float g, float b,
+                                       float alpha)
 {
         int postion = 0;
 
@@ -105,7 +107,7 @@ static __inline _generate_new_gaussian(gaussmix_single_gaussian_t* pgauss,
                 (*pngaussians_used)++;
         }
 
-        pgauss[postion].gsg_fweight = g_model_param.gmp_falpha;
+        pgauss[postion].gsg_fweight = alpha;
         pgauss[postion].gsg_fmean[0] = r;
         pgauss[postion].gsg_fmean[1] = g;
         pgauss[postion].gsg_fmean[2] = b;
@@ -121,6 +123,8 @@ static unsigned char _update(float r, float g, float b,
                              gaussmix_single_gaussian_t *psg, 
                              unsigned char *pngaussians_used)
 {
+        static long long nframe = 1; /* how many frames have been processed */
+
         /* return value, 1 => the pixel is classified as background */
         unsigned char bbackground = 0; 
 
@@ -130,12 +134,19 @@ static unsigned char _update(float r, float g, float b,
         float ftotal_weight = 0.f; /* used for background portion decision */
         float fsingle_weight = 0.f;
         float maha_dis = 0.f; /* Mahalanobis distance */
-
+        float falpha = 0.f;
         int imodes = 0;
+
+        if (nframe++ < GAUSSMIX_WINDOW_SIZE / 2) {
+                falpha = 1.0f / (2 * nframe);
+        }
+        else {
+                falpha = g_model_param.gmp_falpha;
+        }
         for (; imodes < (*pngaussians_used); imodes++, psg++) {
                 fsingle_weight = psg->gsg_fweight;
-                fsingle_weight = (1 - g_model_param.gmp_falpha) * fsingle_weight
-                        - g_model_param.gmp_falpha * g_model_param.gmp_fct;
+                fsingle_weight = (1 - falpha) * fsingle_weight
+                        - falpha * g_model_param.gmp_fct;
 
                 /* fit not found yet */
                 if (!bfits) {
@@ -156,7 +167,8 @@ static unsigned char _update(float r, float g, float b,
 
                                 /* update the current gaussian distribution */
                                 _gaussian_update(psg, r, g, b, 
-                                                 maha_dis, fsingle_weight);
+                                                 maha_dis, fsingle_weight,
+                                                 falpha);
 
                                 /* sort
                                    all other weights are at the same place and 
@@ -165,7 +177,7 @@ static unsigned char _update(float r, float g, float b,
                                 _gaussian_sort(psg, imodes);
                         }
                         else {
-                                if (fsingle_weight < -g_model_param.gmp_falpha * 
+                                if (fsingle_weight < -falpha * 
                                         g_model_param.gmp_fct) {
                                         fsingle_weight = 0.f;
                                         (*pngaussians_used)--;
@@ -177,7 +189,7 @@ static unsigned char _update(float r, float g, float b,
         }
 
         if (!bfits) {
-                _generate_new_gaussian(psg, pngaussians_used, r, g, b);
+                _generate_new_gaussian(psg, pngaussians_used, r, g, b, falpha);
         }
 
         // renormalize the weights
