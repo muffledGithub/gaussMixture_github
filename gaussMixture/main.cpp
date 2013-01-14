@@ -53,6 +53,7 @@ int main()
 
         cv::VideoCapture video("./test_resource/spring2.avi");
         cv::Mat frame;
+        cv::Mat fg_frame(height, width, CV_8U);
 
         while (true) {
                 video >> frame;
@@ -63,8 +64,12 @@ int main()
                 gauss_mixture_update(gauss_img, gauss_mask, bg_model, 
                                      bg_model_used);
 
+                memcpy(fg_frame.data, gauss_mask->gi_ucdata, 
+                        sizeof(unsigned char) * width * height);
+
+                cv::imshow("foreground", fg_frame);
                 cv::imshow("show", frame);
-                if (cv::waitKey(30) == 27) break;
+                if (cv::waitKey(1) == 27) break;
         }
 
         gauss_mixture_release_image(&gauss_img);
