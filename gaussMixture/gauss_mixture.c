@@ -130,11 +130,13 @@ static unsigned char _update(float r, float g, float b,
         /* internal: */
         /* if remains 0, a new GMM model will be added */
         unsigned char bfits = 0; 
+        float used_weight;
         float ftotal_weight = 0.f; /* used for background portion decision */
         float fsingle_weight = 0.f;
         float maha_dis = 0.f; /* Mahalanobis distance */
         int imodes = 0;
         for (; imodes < (*pngaussians_used); imodes++, psg++) {
+                used_weight = psg->gsg_fweight;
                 fsingle_weight = psg->gsg_fweight;
                 fsingle_weight = (1 - falpha) * fsingle_weight
                         - falpha * g_model_param.gmp_fct;
@@ -176,7 +178,7 @@ static unsigned char _update(float r, float g, float b,
                                 psg->gsg_fweight = fsingle_weight;
                         }
                 }
-                ftotal_weight += psg->gsg_fweight;
+                ftotal_weight += used_weight;
         }
 
         if (!bfits) {
