@@ -67,6 +67,7 @@ int main()
                 memcpy(fg_frame.data, gauss_mask->gi_ucdata, 
                         sizeof(unsigned char) * width * height);
 
+                cv::circle(frame, cv::Point(150, 325), 3, cv::Scalar(0, 0, 255), -1);
                 cv::imshow("foreground", fg_frame);
                 cv::imshow("show", frame);
                 if (cv::waitKey(1) == 27) break;

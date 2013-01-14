@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <memory.h>
 
-#define GAUSSMIX_ABS(r) (r) > 0 ? (r) : (-r)
+#define GAUSSMIX_ABS(r) (r) >= 0 ? (r) : -(r)
 static gaussmix_model_param_t g_model_param;
 
 static void _set_model_param(int img_width, int img_height)
@@ -138,32 +138,33 @@ static unsigned char _update(float r, float g, float b,
         float ftotal_weight = 0.f; /* for background portion decision */
         float fsingle_weight = 0.f; /* for weight update */
         float maha_dis = 0.f; /* Mahalanobis distance */
+        gaussmix_single_gaussian_t *pgauss = psg;
         int imodes = 0;
-        for (; imodes < (*pngaussians_used); imodes++, psg++) {
-                used_weight = psg->gsg_fweight;
-                fsingle_weight = psg->gsg_fweight;
+        for (; imodes < (*pngaussians_used); imodes++, pgauss++) {
+                used_weight = pgauss->gsg_fweight;
+                fsingle_weight = pgauss->gsg_fweight;
                 fsingle_weight = (1 - falpha) * fsingle_weight
                         - falpha * g_model_param.gmp_fct;
 
                 /* fit not found yet */
                 if (!bfits) {
-                        maha_dis = _maha_distance(r, g, b, psg->gsg_fmean);
+                        maha_dis = _maha_distance(r, g, b, pgauss->gsg_fmean);
 
                         /* background checking */
                         if ((ftotal_weight < g_model_param.gmp_fone_minus_cf) && 
                              (maha_dis < g_model_param.gmp_fcthr * 
-                             psg->gsg_fvariance)) {
+                             pgauss->gsg_fvariance)) {
                                         bbackground = 1;
                         }
 
                         /* check if fits the current gaussian */
                         if (maha_dis < g_model_param.gmp_fthres_smd * 
-                                psg->gsg_fvariance) {
+                                pgauss->gsg_fvariance) {
 
                                 bfits = 1; /* belongs to the current gaussian */
 
                                 /* update the current gaussian distribution */
-                                _gaussian_update(psg, r, g, b, 
+                                _gaussian_update(pgauss, r, g, b, 
                                                  maha_dis, fsingle_weight,
                                                  falpha);
 
@@ -171,6 +172,8 @@ static unsigned char _update(float r, float g, float b,
                                    all other weights are at the same place and 
                                    only the matched (imodes) is higher -> 
                                    just find the new place for it */
+                                /* sort is implemented in the whole array, so
+                                   here using psg instead of pgauss */
                                 _gaussian_sort(psg, imodes);
                         }
                         else {
@@ -179,7 +182,7 @@ static unsigned char _update(float r, float g, float b,
                                         fsingle_weight = 0.f;
                                         (*pngaussians_used)--;
                                 }
-                                psg->gsg_fweight = fsingle_weight;
+                                pgauss->gsg_fweight = fsingle_weight;
                         }
                 }
                 ftotal_weight += used_weight;
@@ -305,6 +308,13 @@ void gauss_mixture_update(gaussmix_image_t *image,
         printf("nfram is: %d.\n", nframe);
         memset(fg_mask->gi_ucdata, 0, sizeof(unsigned char) * width * height);
         while (i++ < width * height) {
+#ifdef _DEBUG
+                if (i == 325 * 698 + 150) {
+                        r = (float)img_data[0];
+                        g = (float)img_data[1];
+                        b = (float)img_data[2];
+                }
+#endif
                 bbackground = _update( (float)img_data[0], 
                                        (float)img_data[1], 
                                        (float)img_data[2],
@@ -313,13 +323,6 @@ void gauss_mixture_update(gaussmix_image_t *image,
                                        bg_model_used );
                 if (!bbackground) *mask_data = 255;
 
-#ifdef _DEBUG
-                if (i == 200 * 698 + 30) {
-                        r = (float)img_data[0];
-                        g = (float)img_data[1];
-                        b = (float)img_data[2];
-                }
-#endif
 
                 img_data += 3; /* RGB 3 channels */
                 mask_data++;
