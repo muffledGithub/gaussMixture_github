@@ -37,13 +37,18 @@ int main()
 }
 */
 
+static __inline unsigned __int64 GetCycleCount()
+{
+        __asm _emit 0x0F
+        __asm _emit 0x31
+}
 
 int main()
 {
         float *bg_model = NULL;
         unsigned char *bg_model_used = NULL;
-        int width = 698;
-        int height = 572;
+        int width = 320;
+        int height = 240;
 
         gauss_mixture_initialize(width, height, &bg_model, &bg_model_used);
         gaussmix_image_t *gauss_img = 
@@ -51,9 +56,11 @@ int main()
         gaussmix_image_t *gauss_mask = 
                 gauss_mixture_create_image(width, height, 1);
 
-        cv::VideoCapture video("./test_resource/spring2.avi");
+        cv::VideoCapture video("./test_resource/F51_0.avi");
         cv::Mat frame;
         cv::Mat fg_frame(height, width, CV_8U);
+        int nframe = 0;
+        unsigned __int64 total_time = 0;
 
         while (true) {
                 video >> frame;
@@ -61,21 +68,30 @@ int main()
 
                 memcpy(gauss_img->gi_ucdata, frame.data, sizeof(unsigned char) 
                         * width * height * frame.channels());
+
+
+                unsigned __int64 start = GetCycleCount();
                 gauss_mixture_update(gauss_img, gauss_mask, bg_model, 
                                      bg_model_used);
+                unsigned __int64 end = GetCycleCount();
+                total_time += (end - start);
 
                 memcpy(fg_frame.data, gauss_mask->gi_ucdata, 
                         sizeof(unsigned char) * width * height);
 
-                cv::circle(frame, cv::Point(150, 325), 3, cv::Scalar(0, 0, 255), -1);
                 cv::imshow("foreground", fg_frame);
                 cv::imshow("show", frame);
                 if (cv::waitKey(1) == 27) break;
+
+                nframe++;
         }
 
         gauss_mixture_release_image(&gauss_img);
         gauss_mixture_release_image(&gauss_mask);
         gauss_mixture_final(&bg_model, &bg_model_used);
+
+        std::cout<<"average time is: "<<total_time * 1.0 / (2.67 * 1000000) / nframe
+                 <<std::endl;
 
         return 0;
 }

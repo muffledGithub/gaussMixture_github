@@ -50,7 +50,7 @@ extern "C" {
 
 /* complexity reduction prior constant 0 - no reduction 
    of number of components*/
-#define GAUSSMIX_CT                       0.05f   
+#define GAUSSMIX_CT                       0.01f   
 
 /* value to use in the segmentation mask for shadows, 
    sot 0 not to do shadow detection*/

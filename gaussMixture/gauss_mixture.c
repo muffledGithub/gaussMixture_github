@@ -59,14 +59,13 @@ static __inline void _gaussian_update(gaussmix_single_gaussian_t *pgauss,
                                       float alpha)
 {
         weight += alpha;
-        pgauss->gsg_fmean[0] += alpha /
-                weight * (r - pgauss->gsg_fmean[0]);
-        pgauss->gsg_fmean[1] += alpha /
-                weight * (g - pgauss->gsg_fmean[1]);
-        pgauss->gsg_fmean[2] += alpha /
-                weight * (b - pgauss->gsg_fmean[2]);
-        pgauss->gsg_fvariance += alpha / 
-                weight * (maha_dis - pgauss->gsg_fvariance);
+
+        /*pgauss->gsg_fvariance += alpha / 
+                weight * (maha_dis - pgauss->gsg_fvariance);*/
+        pgauss->gsg_fvariance += alpha / weight * 
+                ( (r - pgauss->gsg_fmean[0]) + 
+                  (g - pgauss->gsg_fmean[1]) + 
+                  (b - pgauss->gsg_fmean[2]) );
         if (pgauss->gsg_fvariance < g_model_param.gmp_fvar_min) {
                 pgauss->gsg_fvariance = 
                         g_model_param.gmp_fvar_min;
@@ -75,6 +74,14 @@ static __inline void _gaussian_update(gaussmix_single_gaussian_t *pgauss,
                 pgauss->gsg_fvariance = 
                         g_model_param.gmp_fvar_max;
         }
+
+        pgauss->gsg_fmean[0] += alpha /
+                weight * (r - pgauss->gsg_fmean[0]);
+        pgauss->gsg_fmean[1] += alpha /
+                weight * (g - pgauss->gsg_fmean[1]);
+        pgauss->gsg_fmean[2] += alpha /
+                weight * (b - pgauss->gsg_fmean[2]);
+        
         pgauss->gsg_fweight = weight;
 }
 
@@ -305,7 +312,6 @@ void gauss_mixture_update(gaussmix_image_t *image,
                 falpha = g_model_param.gmp_falpha;
         }
 
-        printf("nfram is: %d.\n", nframe);
         memset(fg_mask->gi_ucdata, 0, sizeof(unsigned char) * width * height);
         while (i++ < width * height) {
 #ifdef _DEBUG
