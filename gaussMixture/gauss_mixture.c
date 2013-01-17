@@ -409,14 +409,13 @@ void gauss_mixture_update(gaussmix_image_t *image,
                                        psg, 
                                        bg_model_used );
                 if (!bbackground) {
-                        /*if (!_shadow_detect( (float)img_data[0], 
+                        if (!_shadow_detect( (float)img_data[0], 
                                              (float)img_data[1], 
                                              (float)img_data[2],
                                              psg, 
                                              bg_model_used) ){
                                                      *mask_data = 255;
-                        } */       
-                        *mask_data = 255;
+                        }        
                 }
 
                 img_data += 3; /* RGB 3 channels */
