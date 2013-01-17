@@ -128,6 +128,17 @@ static __inline _generate_new_gaussian(gaussmix_single_gaussian_t* pgauss,
         _gaussian_sort(pgauss, postion);
 }
 
+static __inline _weight_normalize(gaussmix_single_gaussian_t *psg, int length)
+{
+        float sum = 0.f;
+        int i = 0;
+
+        for (i = 0; i < length; ++i) 
+                sum += psg[i].gsg_fweight;
+        for (i = 0; i < length; ++i)
+                psg[i].gsg_fweight /= sum;
+}
+
 /* calculate distances to the modes (+ sort)
    here we need to go in descending order!!! */
 static unsigned char _update(float r, float g, float b, 
@@ -147,6 +158,7 @@ static unsigned char _update(float r, float g, float b,
         float maha_dis = 0.f; /* Mahalanobis distance */
         gaussmix_single_gaussian_t *pgauss = psg;
         int imodes = 0;
+
         for (; imodes < (*pngaussians_used); imodes++, pgauss++) {
                 used_weight = pgauss->gsg_fweight;
                 fsingle_weight = pgauss->gsg_fweight;
@@ -199,14 +211,33 @@ static unsigned char _update(float r, float g, float b,
                 _generate_new_gaussian(psg, pngaussians_used, r, g, b, falpha);
         }
 
-        /* renormalize the weights */
-        ftotal_weight = 0.f;
-        for (imodes = 0; imodes < (*pngaussians_used); ++imodes)
-                ftotal_weight += psg[imodes].gsg_fweight;
-        for (imodes = 0; imodes < (*pngaussians_used); ++imodes)
-                psg[imodes].gsg_fweight /= ftotal_weight;
+        _weight_normalize(psg, (int)(*pngaussians_used));
 
         return bbackground;                
+}
+
+static void _mask_post_process(gaussmix_image_t* src, gaussmix_image_t *dst)
+{
+        int width = src->gi_iwidth;
+        int height = dst->gi_iheight;
+        unsigned char *src_prev, *src_cur, *src_next;
+        unsigned char *dst_cur;
+        int w, h;
+
+        for (h = 1; h < height - 1; ++h) {
+                src_prev = src->gi_ucdata + (h - 1) * width;
+                src_cur  = src->gi_ucdata + h * width;
+                src_next = src->gi_ucdata + (h + 1) * width;
+                dst_cur  = dst->gi_ucdata + h * width;
+
+                for (w = 1; w < width - 1; ++w) {
+                        if (src_prev[w-1] || src_prev[w] || src_prev[w+1] ||
+                            src_cur[w-1] || src_cur[w] || src_cur[w+1] ||
+                            src_next[w-1] || src_next[w] ||src_next[w+1]) {
+                                    dst_cur[w] = 255;
+                        }
+                }
+        }
 }
 
 gaussmix_image_t* gauss_mixture_create_image(int width, int height, 
@@ -290,20 +321,20 @@ void gauss_mixture_update(gaussmix_image_t *image,
                           unsigned char *bg_model_used)
 {
         static long long nframe = 0; /* how many frames have been processed */
+        static gaussmix_image_t *fg_mask_temp = NULL;
 
         int width = image->gi_iwidth;
         int height = image->gi_iheight;
         unsigned char *img_data = image->gi_ucdata;
-        unsigned char *mask_data = fg_mask->gi_ucdata;
+        unsigned char *mask_data = NULL;
         gaussmix_single_gaussian_t *psg = (gaussmix_single_gaussian_t*)bg_model;
         int i = 0;
         unsigned char bbackground = 0;
         float falpha = 0.f;
 
-#ifdef _DEBUG
-        float r, g, b;
-#endif
-
+        if (nframe == 0) {
+                fg_mask_temp = gauss_mixture_create_image(width, height ,1);
+        }
         /* at the start, use faster learning speed */
         if (nframe++ < GAUSSMIX_WINDOW_SIZE / 2) {
                 falpha = 1.0f / (2 * nframe);
@@ -312,15 +343,10 @@ void gauss_mixture_update(gaussmix_image_t *image,
                 falpha = g_model_param.gmp_falpha;
         }
 
-        memset(fg_mask->gi_ucdata, 0, sizeof(unsigned char) * width * height);
+        memset(fg_mask_temp->gi_ucdata, 0, 
+                        sizeof(unsigned char) * width * height);
+        mask_data = fg_mask_temp->gi_ucdata;
         while (i++ < width * height) {
-#ifdef _DEBUG
-                if (i == 325 * 698 + 150) {
-                        r = (float)img_data[0];
-                        g = (float)img_data[1];
-                        b = (float)img_data[2];
-                }
-#endif
                 bbackground = _update( (float)img_data[0], 
                                        (float)img_data[1], 
                                        (float)img_data[2],
@@ -335,4 +361,7 @@ void gauss_mixture_update(gaussmix_image_t *image,
                 psg += g_model_param.gmp_inmodels;
                 bg_model_used++;
         }
+
+        memset(fg_mask->gi_ucdata, 0, sizeof(unsigned char) * width * height);
+        _mask_post_process(fg_mask_temp, fg_mask);
 }
