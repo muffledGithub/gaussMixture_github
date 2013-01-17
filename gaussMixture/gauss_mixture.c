@@ -139,6 +139,61 @@ static __inline _weight_normalize(gaussmix_single_gaussian_t *psg, int length)
                 psg[i].gsg_fweight /= sum;
 }
 
+#define IS_SHADOW  1
+#define NOT_SHADOW 0
+static int _shadow_detect(float r, float g, float b,
+                          gaussmix_single_gaussian_t *psg,
+                          unsigned char *pngaussians_used)
+{
+        float tweight = 0.f;
+        float numerator, denominator;
+        float a = 0.f; /* numerator / denominator */
+        float dist2a = 0.f, dD;
+        int imodes;
+
+        /* check all the components  marked as background */
+        for (imodes = 0; imodes < (*pngaussians_used); ++imodes) {
+                numerator = 0.f;
+                denominator = 0.f;
+
+                numerator += ( r * psg[imodes].gsg_fmean[0] + 
+                               g * psg[imodes].gsg_fmean[1] + 
+                               b * psg[imodes].gsg_fmean[2] );
+                denominator += ( psg[imodes].gsg_fmean[0] * 
+                                        psg[imodes].gsg_fmean[0] + 
+                                 psg[imodes].gsg_fmean[1] *
+                                        psg[imodes].gsg_fmean[1] + 
+                                 psg[imodes].gsg_fmean[2] * 
+                                        psg[imodes].gsg_fmean[2] );
+
+                if (denominator == 0.f) return NOT_SHADOW;
+
+                a = numerator / denominator;
+
+                if (a <= 1 && a >= g_model_param.gmp_ftau) {
+                        dist2a = 0.f;
+                        dD = a * psg[imodes].gsg_fmean[0] - r;
+                        dist2a += dD * dD;
+                        dD = a * psg[imodes].gsg_fmean[1] - g;
+                        dist2a += dD * dD;
+                        dD = a * psg[imodes].gsg_fmean[2] - b;
+                        dist2a += dD * dD;
+
+                        if (dist2a < g_model_param.gmp_fcthr * 
+                                psg[imodes].gsg_fvariance * a * a) {
+                                        return IS_SHADOW;
+                        }
+                }
+
+                tweight += psg[imodes].gsg_fweight;
+                if (tweight > g_model_param.gmp_fone_minus_cf) {
+                        return NOT_SHADOW;
+                }
+        }
+
+        return NOT_SHADOW;
+}
+
 /* calculate distances to the modes (+ sort)
    here we need to go in descending order!!! */
 static unsigned char _update(float r, float g, float b, 
@@ -353,8 +408,16 @@ void gauss_mixture_update(gaussmix_image_t *image,
                                        falpha,
                                        psg, 
                                        bg_model_used );
-                if (!bbackground) *mask_data = 255;
-
+                if (!bbackground) {
+                        /*if (!_shadow_detect( (float)img_data[0], 
+                                             (float)img_data[1], 
+                                             (float)img_data[2],
+                                             psg, 
+                                             bg_model_used) ){
+                                                     *mask_data = 255;
+                        } */       
+                        *mask_data = 255;
+                }
 
                 img_data += 3; /* RGB 3 channels */
                 mask_data++;

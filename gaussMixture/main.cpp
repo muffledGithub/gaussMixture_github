@@ -47,8 +47,8 @@ int main()
 {
         float *bg_model = NULL;
         unsigned char *bg_model_used = NULL;
-        int width = 320;
-        int height = 240;
+        int width = 704;
+        int height = 576;
 
         gauss_mixture_initialize(width, height, &bg_model, &bg_model_used);
         gaussmix_image_t *gauss_img = 
@@ -56,11 +56,13 @@ int main()
         gaussmix_image_t *gauss_mask = 
                 gauss_mixture_create_image(width, height, 1);
 
-        cv::VideoCapture video("./test_resource/F51_0.avi");
+        cv::VideoCapture video("./test_resource/shadow.avi");
         cv::Mat frame;
         cv::Mat fg_frame(height, width, CV_8U);
         int nframe = 0;
         unsigned __int64 total_time = 0;
+        char szpath[256];
+        memset(szpath, 0, sizeof(szpath));
 
         while (true) {
                 video >> frame;
@@ -83,6 +85,9 @@ int main()
                 cv::imshow("show", frame);
                 if (cv::waitKey(1) == 27) break;
 
+                sprintf(szpath, "./test_resource/without_shadow_detect/%d.jpg", nframe);
+                cv::imwrite(szpath, fg_frame);
+
                 nframe++;
         }
 
@@ -97,22 +102,23 @@ int main()
 }
 
 
+
 /*
 int main()
 {
-        cv::VideoCapture video("./test_resource/spring2.avi");
+        cv::VideoCapture video("./test_resource/11.10.8.13.36.avi");
         cv::Mat frame;
+
+        video >> frame;
+        std::cout<<frame.rows<<" "<<frame.cols<<std::endl;
 
         cv::BackgroundSubtractorMOG2 bg_model;
         while (true) {
                 video >> frame;
                 if (!frame.data) break;
 
-                cv::Mat mask;
-                bg_model(frame, mask);
-
                 cv::imshow("show", frame);
-                if (cv::waitKey(1) == 27) break;
+                if (cv::waitKey(30) == 27) break;
         }
 
         return 0;
